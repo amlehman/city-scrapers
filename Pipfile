@@ -15,7 +15,7 @@ city-scrapers-core = {extras = ["azure"],version = "*"}
 pypdf2 = "*"
 pywin32 = {version = "*",sys_platform = "== 'win32'"}
 zipp = "==0.6.0"
-pdfminer = "*"
+pdfminer-six = "*"
 
 [dev-packages]
 freezegun = "*"

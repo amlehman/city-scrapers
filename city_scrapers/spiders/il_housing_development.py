@@ -18,6 +18,10 @@ class IlHousingDevelopmentSpider(CityScrapersSpider):
         "address": "111 E. Wacker, 11th floor boardroom, Chicago, IL 60601",
     }
 
+    def __init__(self, *args, **kwargs):
+        self.minutes_map = dict()  # Populated by self._parse_minutes()
+        self.agenda_map = dict()  # Populated by self._parse_agenda()
+
     def parse(self, response):
         """
         `parse` should always `yield` Meeting items
@@ -25,6 +29,11 @@ class IlHousingDevelopmentSpider(CityScrapersSpider):
         Change the `_parse_title`, `_parse_start`, etc methods to fit your scraping
         needs.
         """
+        for link in response.xpath('//a[contains(text(), "Minutes")]'):
+            yield response.follow(
+                link.attrib["href"], callback=self._parse_minutes
+            )
+
         for link in response.xpath('//a[contains(text(), "Meeting Dates")]'):
             yield response.follow(
                 link.attrib["href"], callback=self._parse_pdf_schedule
@@ -50,20 +59,23 @@ class IlHousingDevelopmentSpider(CityScrapersSpider):
         for date in dates:
             if previous_date is not None and parse(date) < parse(previous_date):
                 meeting = next(names_and_times)
-            meetings.append(meeting + (date,))
+            meetings.append({
+                'title': meeting[0],
+                'start': parse(f'{date} {meeting[1]}')
+            })
             previous_date = date
 
         print(meetings)
         for item in meetings:
             meeting = Meeting(
-                title=self._parse_title(item),
+                title=item['title'],
                 description=self._parse_description(item),
                 classification=BOARD,
-                start=self._parse_start(item),
-                end=self._parse_end(item),
+                start=item['start'],
+                end=None,
                 all_day=False,
                 time_notes=self._parse_time_notes(item),
-                location=self._parse_location(item),
+                location=self.location,
                 links=self._parse_links(item),
                 source=self._parse_source(response),
             )
@@ -73,31 +85,18 @@ class IlHousingDevelopmentSpider(CityScrapersSpider):
 
             yield meeting
 
-    def _parse_title(self, item):
-        """Parse or generate meeting title."""
-        return ""
+    def _parse_minutes(self, response):
+        print(response)
 
     def _parse_description(self, item):
         """Parse or generate meeting description."""
         return ""
 
 
-    def _parse_start(self, item):
-        """Parse start datetime as a naive datetime object."""
-        return item[1]
-
-    def _parse_end(self, item):
-        """Parse end datetime as a naive datetime object. Added by pipeline if None"""
-        return None
-
     def _parse_time_notes(self, item):
         """Parse any additional notes on the timing of the meeting"""
         return ""
 
-
-    def _parse_location(self, item):
-        """Parse or generate location."""
-        return self.location
 
     def _parse_links(self, item):
         """Parse or generate links."""
